@@ -26,6 +26,16 @@ gather_input(Action) :-
     ),
     once(key_action(Key, Action)).
 
+draw_room(room(X,Y,Width,Height,Lit)) :-
+    format('~l~T┌~`─t~*|┐', [[goto(X,Y)], Width, Width]),
+    succ(Y,Y1),
+    YMax is Y+Height,
+    forall(between(Y1,YMax,I),
+           format('~l~T│~`.t~*|│', [[goto(X,I)], Width, Width])),
+    format('~l~T└~`─t~*|┘', [[goto(X,YMax)], Width, Width]).
+
+room(room(7,6,24,10,lit)).
+
 key_action(esc('A'), move_up).
 key_action(esc('B'), move_down).
 key_action(esc('D'), move_left).
@@ -42,3 +52,4 @@ evaluate(State, inventory, State) :-
     write('You aren''t carrying anything!'), nl.
 evaluate(State, noop, State).
 evaluate(_,     quit, quit).
+
