@@ -13,7 +13,11 @@ main(State) :-
 
 draw(player(X,Y)) :-
     tty_clear,
-    format('~T~w~T', [goto(X,Y),'@',goto(0,25)]).
+    forall(room(Room), draw_room(Room)),
+    draw_player(player(X,Y)).
+
+draw_player(player(X,Y)) :-
+    format('~T~w~T', [goto(X,Y), '☻', goto(0,25)]).
 
 gather_input(Action) :-
     get_single_char(Start),
