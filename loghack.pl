@@ -1,4 +1,5 @@
 :- use_module(library(tty)).
+:- use_module(library(random)).
 
 initial_state(player(10,10)).
 
@@ -57,3 +58,30 @@ evaluate(State, inventory, State) :-
 evaluate(State, noop, State).
 evaluate(_,     quit, quit).
 
+generate_dungeon(Rooms) :- generate_dungeon([], 10, Rooms).
+
+overlaps(room(X1, Y1, W1, H1, _), room(X3, Y3, W3, H3, _)) :-
+    X2 is X1 + W1, Y2 is Y1 + H1,
+    X4 is X3 + W3, Y4 is Y3 + H3,
+    X3 =< X2, Y3 =< Y2, X1 =< X4, Y1 =< Y4.
+
+generate_room(room(X,Y,Width,Height,Lit)) :-
+    random_between(2,40,Width),
+    random_between(2,20,Height),
+    XMax is 80 - Width,
+    YMax is 25 - Height,
+    random_between(0,XMax,X),
+    random_between(0,YMax,Y),
+    random_member(Lit, [lit,unlit]).
+
+generate_dungeon(Rooms, 0, Rooms).
+generate_dungeon(RoomsMadeSoFar, TriesRemaining, Rooms) :-
+    generate_room(Room),
+    (forall(member(R0, RoomsMadeSoFar),
+           \+ overlaps(Room, R0)) ->
+        generate_dungeon([Room|RoomsMadeSoFar], TriesRemaining, Rooms)
+    ;
+        succ(TriesLeft, TriesRemaining),
+        generate_dungeon(RoomsMadeSoFar, TriesLeft, Rooms)
+    ).
+    
