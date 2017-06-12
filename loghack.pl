@@ -1,21 +1,21 @@
 :- use_module(library(tty)).
 :- use_module(library(random)).
 
-initial_state(player(10,10)).
+initial_state(state(player(10,10), Rooms)) :- generate_dungeon(Rooms).
 
 main :- initial_state(State), main(State).
 
-main(quit)  :- write('Thanks for playing!'), nl, !.
+main(quit)  :- tty_clear, write('Thanks for playing!'), nl, !.
 main(State) :-
     draw(State),
     gather_input(Input),
     once(evaluate(State, Input, NewState)),
     main(NewState).
 
-draw(player(X,Y)) :-
+draw(state(Player, Rooms)) :-
     tty_clear,
-    forall(room(Room), draw_room(Room)),
-    draw_player(player(X,Y)).
+    maplist(draw_room, Rooms),
+    draw_player(Player).
 
 draw_player(player(X,Y)) :-
     format('~T~w~T', [goto(X,Y), '☻', goto(0,25)]).
@@ -32,31 +32,36 @@ gather_input(Action) :-
     once(key_action(Key, Action)).
 
 draw_room(room(X,Y,Width,Height,Lit)) :-
-    format('~l~T┌~`─t~*|┐', [[goto(X,Y)], Width, Width]),
+    format(string(R1), '┌~`─t~*|┐', [Width, Width]),
+    format('~T~w', [goto(X,Y), R1]),
     succ(Y,Y1),
     YMax is Y+Height,
     forall(between(Y1,YMax,I),
-           format('~l~T│~`.t~*|│', [[goto(X,I)], Width, Width])),
-    format('~l~T└~`─t~*|┘', [[goto(X,YMax)], Width, Width]).
+           (format(string(RI), '│~`.t~*|│', [Width, Width]),
+               format('~T~w', [goto(X,I), RI]))),
+    format(string(RMax), '└~`─t~*|┘', [Width, Width]),
+    format('~T~w', [goto(X,YMax), RMax]).
 
 room(room(7,6,24,10,lit)).
 
-key_action(esc('A'), move_up).
-key_action(esc('B'), move_down).
-key_action(esc('D'), move_left).
-key_action(esc('C'), move_right).
+key_action(esc('A'), move(up)).
+key_action(esc('B'), move(down)).
+key_action(esc('D'), move(left)).
+key_action(esc('C'), move(right)).
 key_action(i,           inventory).
 key_action(q,           quit).
 key_action(_,           noop).
 
-evaluate(player(X1, Y),  move_left,  player(X0, Y))  :- succ(X0, X1).
-evaluate(player(X0, Y),  move_right, player(X1, Y))  :- succ(X0, X1).
-evaluate(player(X,  Y1), move_up,    player(X,  Y0)) :- succ(Y0, Y1).
-evaluate(player(X,  Y0), move_down,  player(X,  Y1)) :- succ(Y0, Y1).
-evaluate(State, inventory, State) :-
-    write('You aren''t carrying anything!'), nl.
+evaluate(state(Player, Rooms), move(Dir), state(Player1, Rooms)) :- evaluate(Player, move(Dir), Player1).
 evaluate(State, noop, State).
 evaluate(_,     quit, quit).
+evaluate(State, inventory, State) :-
+    write('You aren''t carrying anything!'), nl.
+
+evaluate(player(X1, Y),  move(left),  player(X0, Y))  :- succ(X0, X1).
+evaluate(player(X0, Y),  move(right), player(X1, Y))  :- succ(X0, X1).
+evaluate(player(X,  Y1), move(up),    player(X,  Y0)) :- succ(Y0, Y1).
+evaluate(player(X,  Y0), move(down),  player(X,  Y1)) :- succ(Y0, Y1).
 
 generate_dungeon(Rooms) :- generate_dungeon([], 10, Rooms).
 
@@ -77,11 +82,19 @@ generate_room(room(X,Y,Width,Height,Lit)) :-
 generate_dungeon(Rooms, 0, Rooms).
 generate_dungeon(RoomsMadeSoFar, TriesRemaining, Rooms) :-
     generate_room(Room),
+    % if the new room doesn't overlap, 
     (forall(member(R0, RoomsMadeSoFar),
-           \+ overlaps(Room, R0)) ->
+            \+ overlaps(Room, R0)) ->
+        % append it to the ist of rooms and proceed
         generate_dungeon([Room|RoomsMadeSoFar], TriesRemaining, Rooms)
     ;
+        % otherwise, decrement the tries remaining and try again
         succ(TriesLeft, TriesRemaining),
         generate_dungeon(RoomsMadeSoFar, TriesLeft, Rooms)
     ).
-    
+
+room_render_test :-
+    tty_clear,
+    generate_dungeon(Rooms),
+    maplist(draw_room, Rooms),
+    format('~T', [goto(0,25)]).
