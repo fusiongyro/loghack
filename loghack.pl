@@ -1,7 +1,15 @@
 :- use_module(library(tty)).
 :- use_module(library(random)).
 
-initial_state(state(player(10,10), Rooms)) :- generate_dungeon(Rooms).
+random_position(X, Y, Width, Height, RX, RY) :-
+    XMax is X + Width, YMax is Y + Height,
+    random_between(X, XMax, RX), random_between(Y, YMax, RY).
+    
+
+initial_state(state(player(PlayerX,PlayerY), Rooms)) :-
+    generate_dungeon(Rooms),
+    random_member(room(X, Y, W, H, _), Rooms),
+    random_position(X, Y, W, H, PlayerX, PlayerY).
 
 main :- initial_state(State), main(State).
 
@@ -11,14 +19,6 @@ main(State) :-
     gather_input(Input),
     once(evaluate(State, Input, NewState)),
     main(NewState).
-
-draw(state(Player, Rooms)) :-
-    tty_clear,
-    maplist(draw_room, Rooms),
-    draw_player(Player).
-
-draw_player(player(X,Y)) :-
-    format('~T~w~T', [goto(X,Y), '☻', goto(0,25)]).
 
 gather_input(Action) :-
     get_single_char(Start),
@@ -30,6 +30,14 @@ gather_input(Action) :-
         char_code(Key, Start)
     ),
     once(key_action(Key, Action)).
+
+draw(state(Player, Rooms)) :-
+    tty_clear,
+    maplist(draw_room, Rooms),
+    draw_player(Player).
+
+draw_player(player(X,Y)) :-
+    format('~T~w~T', [goto(X,Y), '☻', goto(0,25)]).
 
 draw_room(room(X,Y,Width,Height,Lit)) :-
     format(string(R1), '┌~`─t~*|┐', [Width, Width]),
@@ -48,11 +56,12 @@ key_action(esc('A'), move(up)).
 key_action(esc('B'), move(down)).
 key_action(esc('D'), move(left)).
 key_action(esc('C'), move(right)).
-key_action(i,           inventory).
-key_action(q,           quit).
-key_action(_,           noop).
+key_action(i,        inventory).
+key_action(q,        quit).
+key_action(_,        noop).
 
-evaluate(state(Player, Rooms), move(Dir), state(Player1, Rooms)) :- evaluate(Player, move(Dir), Player1).
+evaluate(state(Player, Rooms), move(Dir), state(Player1, Rooms)) :-
+    evaluate(Player, move(Dir), Player1).
 evaluate(State, noop, State).
 evaluate(_,     quit, quit).
 evaluate(State, inventory, State) :-
@@ -63,12 +72,12 @@ evaluate(player(X0, Y),  move(right), player(X1, Y))  :- succ(X0, X1).
 evaluate(player(X,  Y1), move(up),    player(X,  Y0)) :- succ(Y0, Y1).
 evaluate(player(X,  Y0), move(down),  player(X,  Y1)) :- succ(Y0, Y1).
 
-generate_dungeon(Rooms) :- generate_dungeon([], 10, Rooms).
-
 overlaps(room(X1, Y1, W1, H1, _), room(X3, Y3, W3, H3, _)) :-
     X2 is X1 + W1, Y2 is Y1 + H1,
     X4 is X3 + W3, Y4 is Y3 + H3,
     X3 =< X2, Y3 =< Y2, X1 =< X4, Y1 =< Y4.
+
+generate_dungeon(Rooms) :- generate_dungeon([], 10, Rooms).
 
 generate_room(room(X,Y,Width,Height,Lit)) :-
     random_between(2,40,Width),
