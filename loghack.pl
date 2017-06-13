@@ -1,15 +1,17 @@
 :- use_module(library(tty)).
 :- use_module(library(random)).
 
-random_position(X, Y, Width, Height, RX, RY) :-
-    XMax is X + Width, YMax is Y + Height,
-    random_between(X, XMax, RX), random_between(Y, YMax, RY).
-    
+%% use this operator for making points
+:- op(200, xfx, @).
 
-initial_state(state(player(PlayerX,PlayerY), Rooms)) :-
+random_position(X@Y, W@H, RX@RY) :-
+    XMax is X + W, YMax is Y + H,
+    random_between(X, XMax, RX), random_between(Y, YMax, RY).
+
+initial_state(state(player(PX@PY), Rooms)) :-
     generate_dungeon(Rooms),
-    random_member(room(X, Y, W, H, _), Rooms),
-    random_position(X, Y, W, H, PlayerX, PlayerY).
+    random_member(room(X@Y, W@H, _), Rooms),
+    random_position(X@Y, W@H, PX@PY).
 
 main :- initial_state(State), main(State).
 
@@ -36,10 +38,10 @@ draw(state(Player, Rooms)) :-
     maplist(draw_room, Rooms),
     draw_player(Player).
 
-draw_player(player(X,Y)) :-
+draw_player(player(X@Y)) :-
     format('~T~w~T', [goto(X,Y), '☻', goto(0,25)]).
 
-draw_room(room(X,Y,Width,Height,Lit)) :-
+draw_room(room(X@Y,Width@Height,Lit)) :-
     format(string(R1), '┌~`─t~*|┐', [Width, Width]),
     format('~T~w', [goto(X,Y), R1]),
     succ(Y,Y1),
@@ -49,8 +51,6 @@ draw_room(room(X,Y,Width,Height,Lit)) :-
                format('~T~w', [goto(X,I), RI]))),
     format(string(RMax), '└~`─t~*|┘', [Width, Width]),
     format('~T~w', [goto(X,YMax), RMax]).
-
-room(room(7,6,24,10,lit)).
 
 key_action(esc('A'), move(up)).
 key_action(esc('B'), move(down)).
@@ -67,19 +67,19 @@ evaluate(_,     quit, quit).
 evaluate(State, inventory, State) :-
     write('You aren''t carrying anything!'), nl.
 
-evaluate(player(X1, Y),  move(left),  player(X0, Y))  :- succ(X0, X1).
-evaluate(player(X0, Y),  move(right), player(X1, Y))  :- succ(X0, X1).
-evaluate(player(X,  Y1), move(up),    player(X,  Y0)) :- succ(Y0, Y1).
-evaluate(player(X,  Y0), move(down),  player(X,  Y1)) :- succ(Y0, Y1).
+evaluate(player(X1@Y),  move(left),  player(X0@Y))  :- succ(X0, X1).
+evaluate(player(X0@Y),  move(right), player(X1@Y))  :- succ(X0, X1).
+evaluate(player(X @Y1), move(up),    player(X @Y0)) :- succ(Y0, Y1).
+evaluate(player(X @Y0), move(down),  player(X @Y1)) :- succ(Y0, Y1).
 
-overlaps(room(X1, Y1, W1, H1, _), room(X3, Y3, W3, H3, _)) :-
+overlaps(room(X1@Y1, W1@H1, _), room(X3@Y3, W3@H3, _)) :-
     X2 is X1 + W1, Y2 is Y1 + H1,
     X4 is X3 + W3, Y4 is Y3 + H3,
     X3 =< X2, Y3 =< Y2, X1 =< X4, Y1 =< Y4.
 
 generate_dungeon(Rooms) :- generate_dungeon([], 10, Rooms).
 
-generate_room(room(X,Y,Width,Height,Lit)) :-
+generate_room(room(X@Y,Width@Height,Lit)) :-
     random_between(2,40,Width),
     random_between(2,20,Height),
     XMax is 80 - Width,
